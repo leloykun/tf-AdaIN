@@ -7,7 +7,7 @@ _BGR_MEANS = np.array([103.94, 116.78, 123.68])
 
 def any_to_uint8_scale(image):
     '''
-    Scales a numpy array to [0, 255] and converts it to uint8 
+    Scales a numpy array to [0, 255] and converts it to uint8
     '''
     float_image = image.astype(np.float32)
     imax = float_image.max()
@@ -26,7 +26,7 @@ def any_to_uint8_clip(image):
 def graph_from_t7(net, graph, t7_file):
     '''
     Loads a Torch network from a saved .t7 file into Tensorflow.
-    
+
     :param net Input to Torch network
     :param graph Tensorflow graph that the network should be created as part of
     :param t7 Path to t7 file to use
@@ -34,14 +34,14 @@ def graph_from_t7(net, graph, t7_file):
     layers = []
     print_layers = []#[0, 30]
     t7 = torchfile.load(t7_file,force_8bytes_long=True)
-    
+
     with graph.as_default():
 
         for idx, module in enumerate(t7.modules):
-        
+
             if idx in print_layers:
                 print(module)
-            
+
             if module._typename == b'nn.SpatialReflectionPadding':
                 left = module.pad_l
                 right = module.pad_r
@@ -66,11 +66,11 @@ def graph_from_t7(net, graph, t7_file):
                 layers.append(net)
             elif module._typename == b'nn.SpatialMaxPooling':
                 net = tf.nn.max_pool(net, ksize=[1, module.kH, module.kW, 1], strides=[1, module.dH, module.dW, 1],
-                                   padding='VALID', name = str(module.name, 'utf-8'))
+                                   padding='VALID', name = str(module.name))
                 layers.append(net)
             else:
                 raise NotImplementedError(module._typename)
-        
+
         return net, layers
 
 def _offset_image(image, means):
@@ -80,9 +80,9 @@ def _offset_image(image, means):
         channels[i] += means[i]
     image = tf.concat(axis=3, values=channels)
     return image
-    
+
 def preprocess_image(image, size=None):
-    
+
     # Nets like VGG trained on images imported from OpenCV are
     # in BGR order, so we need to flip the channels on the incoming image.
     # Remove this part if not needed, but for now we assume inputs
@@ -99,11 +99,11 @@ def preprocess_image(image, size=None):
 def postprocess_image(image, size=None):
     #image = _offset_image(image, _BGR_MEANS)
     image = image * 256
-    
+
     # Flip back to RGB
     image = tf.reverse(image, axis=[-1])
     return image
-    
+
 def image_from_file(graph, placeholder_name, size=None):
     with graph.as_default():
         filename = tf.placeholder(tf.string, name=placeholder_name)
@@ -121,15 +121,15 @@ def AdaIN(content_features, style_features, alpha):
     content_mean, content_variance = tf.nn.moments(content_features, [1,2], keep_dims=True)
     epsilon = 1e-5
     normalized_content_features = tf.nn.batch_normalization(content_features, content_mean,
-                                                            content_variance, style_mean, 
+                                                            content_variance, style_mean,
                                                             tf.sqrt(style_variance), epsilon)
     normalized_content_features = alpha * normalized_content_features + (1 - alpha) * content_features
     return normalized_content_features
-    
-    
+
+
 def stylize(content, style, alpha, vgg_t7_file, decode_t7_file, resize=[512,512]):
     '''
-    :param content Filename for the content image    
+    :param content Filename for the content image
     :param style Filename for the style image
     :param vgg_t7_file Filename for the VGG pretrained net
     :param decode_t7_file Filename for the pretrained decoder net
@@ -150,4 +150,3 @@ def stylize(content, style, alpha, vgg_t7_file, decode_t7_file, resize=[512,512]
         feed_dict = {c_filename: content, s_filename: style}
         combined, style_image, content_image = sess.run([c_decoded, s, c], feed_dict=feed_dict)
         return np.squeeze(combined), np.squeeze(content_image), np.squeeze(style_image)
-        
