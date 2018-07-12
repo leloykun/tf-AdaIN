@@ -51,29 +51,38 @@ def graph_from_t7(net, graph, t7_file):
                 top = module.pad_t
                 bottom = module.pad_b
                 net = tf.pad(net, [[0,0], [top, bottom], [left, right], [0,0]], 'REFLECT')
+                print("tf.pad", [[0,0], [top, bottom], [left, right], [0,0]], 'REFLECT')
                 layers.append(net)
             elif module._typename == b'nn.SpatialConvolution':
                 weight = module.weight.transpose([2,3,1,0])
                 bias = module.bias
                 strides = [1, module.dH, module.dW, 1]  # Assumes 'NHWC'
                 net = tf.nn.conv2d(net, weight, strides, padding='VALID')
+                print("tf.nn.conv2d", "weight", strides, "padding=VALID")
                 net = tf.nn.bias_add(net, bias)
+                print("tf.nn.bias_add", bias)
                 layers.append(net)
             elif module._typename == b'nn.ReLU':
                 net = tf.nn.relu(net)
+                print("tf.nn.relu")
                 layers.append(net)
             elif module._typename == b'nn.SpatialUpSamplingNearest':
                 d = tf.shape(net)
                 size = [d[1] * module.scale_factor, d[2] * module.scale_factor]
                 net = tf.image.resize_nearest_neighbor(net, size)
+                print("tf.image.resize_nearest_neighbor", size)
                 layers.append(net)
             elif module._typename == b'nn.SpatialMaxPooling':
                 net = tf.nn.max_pool(net, ksize=[1, module.kH, module.kW, 1], strides=[1, module.dH, module.dW, 1],
                                    padding='VALID', name = str(module.name))
+                print("tf.nn.max_pool", "ksize=[1, module.kH, module.kW, 1]",
+                      "strides=[1, module.dH, module.dW, 1]",
+                      "padding=VALID", str(module.name))
                 layers.append(net)
             else:
                 raise NotImplementedError(module._typename)
-
+        print("layers:")
+        print(layers)
         return net, layers
 
 def _offset_image(image, means):
