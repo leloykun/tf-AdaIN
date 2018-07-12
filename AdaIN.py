@@ -43,7 +43,7 @@ def graph_from_t7(net, graph, t7_file):
 
             # if idx in print_layers:
             #     print(module)
-            print(module)
+            print(module._typename)
 
             if module._typename == b'nn.SpatialReflectionPadding':
                 left = module.pad_l
