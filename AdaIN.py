@@ -60,7 +60,7 @@ def graph_from_t7(net, graph, t7_file):
                 net = tf.nn.conv2d(net, weight, strides, padding='VALID')
                 print("tf.nn.conv2d", "weight", strides, "padding=VALID")
                 net = tf.nn.bias_add(net, bias)
-                print("tf.nn.bias_add", bias)
+                print("tf.nn.bias_add", "bias")
                 layers.append(net)
             elif module._typename == b'nn.ReLU':
                 net = tf.nn.relu(net)
