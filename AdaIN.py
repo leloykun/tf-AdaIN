@@ -39,6 +39,9 @@ def graph_from_t7(net, graph, t7_file):
 
     with graph.as_default():
 
+        block_num = 1;
+        conv_num = 1;
+
         for idx, module in enumerate(t7.modules):
 
             # if idx in print_layers:
@@ -49,34 +52,50 @@ def graph_from_t7(net, graph, t7_file):
                 right = module.pad_r
                 top = module.pad_t
                 bottom = module.pad_b
-                net = tf.pad(net, [[0,0], [top, bottom], [left, right], [0,0]], 'REFLECT')
-                print(idx, "tf.pad", [[0,0], [top, bottom], [left, right], [0,0]], 'REFLECT')
+                net = tf.pad(net,
+                             paddings=[[0,0], [top, bottom], [left, right], [0,0]],
+                             mode='REFLECT',
+                             name="block{}_pad".format(block_num))
+                print(idx, net)
                 layers.append(net)
             elif module._typename == b'nn.SpatialConvolution':
                 weight = module.weight.transpose([2,3,1,0])
                 bias = module.bias
                 strides = [1, module.dH, module.dW, 1]  # Assumes 'NHWC'
-                net = tf.nn.conv2d(net, weight, strides, padding='VALID')
-                print(idx, "tf.nn.conv2d", "weight", strides, "padding=VALID")
-                net = tf.nn.bias_add(net, bias)
-                print(idx, "tf.nn.bias_add", "bias")
+                net = tf.nn.conv2d(net,
+                                   filter=weight,
+                                   strides=strides,
+                                   padding='VALID',
+                                   name="block{}_conv{}".format(block_num,
+                                                                conv_num))
+                conv_num += 1
+                print(idx, net)
+                net = tf.nn.bias_add(net,
+                                     bias=bias,
+                                     name="block{}_bias".format(block_num))
+                print(idx, net)
                 layers.append(net)
             elif module._typename == b'nn.ReLU':
-                net = tf.nn.relu(net)
-                print(idx, "tf.nn.relu")
+                net = tf.nn.relu(net, name="block{}_relu".format(block_num))
+                print(idx, net)
                 layers.append(net)
             elif module._typename == b'nn.SpatialUpSamplingNearest':
                 d = tf.shape(net)
                 size = [d[1] * module.scale_factor, d[2] * module.scale_factor]
-                net = tf.image.resize_nearest_neighbor(net, size)
-                print(idx, "tf.image.resize_nearest_neighbor", size)
+                net = tf.image.resize_nearest_neighbor(net, size,
+                                                       name="block{}_upsampling{}".format(block_num, conv_num))
+                conv_num += 1
+                print(idx, net)
                 layers.append(net)
             elif module._typename == b'nn.SpatialMaxPooling':
-                net = tf.nn.max_pool(net, ksize=[1, module.kH, module.kW, 1], strides=[1, module.dH, module.dW, 1],
-                                   padding='VALID', name = str(module.name))
-                print(idx, "tf.nn.max_pool", "ksize=[1, module.kH, module.kW, 1]",
-                      "strides=[1, module.dH, module.dW, 1]",
-                      "padding=VALID", str(module.name))
+                net = tf.nn.max_pool(net,
+                                     ksize=[1, module.kH, module.kW, 1],
+                                     strides=[1, module.dH, module.dW, 1],
+                                     padding='VALID',
+                                     name="block{}_maxpool".format(block_num))
+                block_num += 1
+                conv_num = 1
+                print(idx, net)
                 layers.append(net)
             else:
                 raise NotImplementedError(module._typename)
