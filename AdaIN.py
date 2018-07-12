@@ -32,15 +32,18 @@ def graph_from_t7(net, graph, t7_file):
     :param t7 Path to t7 file to use
     '''
     layers = []
-    print_layers = []#[0, 30]
+    # print_layers = []#[0, 30]
     t7 = torchfile.load(t7_file,force_8bytes_long=True)
+
+    print("loading graph from file:", t7_file)
 
     with graph.as_default():
 
         for idx, module in enumerate(t7.modules):
 
-            if idx in print_layers:
-                print(module)
+            # if idx in print_layers:
+            #     print(module)
+            print(module)
 
             if module._typename == b'nn.SpatialReflectionPadding':
                 left = module.pad_l
